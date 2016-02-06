@@ -24,7 +24,7 @@ get2dGate = (cb)->
 				chineseConv.sify i
 			
 			{
-				id: temp[0],
+				id: ((item.subject.replace /\[.+?\]|^\s+|\s+$/g, "").replace /^\s+|\s+$/, ""),
 				items: [item],
 				names: (uniqueItems temp),
 				links: [new Link "http://2d-gate.org/thread-#{item.tid}-1-1.html", item.subject],

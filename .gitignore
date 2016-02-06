@@ -31,3 +31,4 @@ config.js
 
 crawler/cache/*.json
 crawler/cache/*.html
+data.json
