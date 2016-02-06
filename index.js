@@ -206,8 +206,27 @@ api.on('message', function(message)
         return;
     }
     
+    
+    if (message.text && message.text.match(/\/start([^a-z]|$)/i)) {
+            var targetId = message.chat.id;
+            var additionOptions = {
+                reply_to_message_id: message.message_id,
+                parse_mode: 'Markdown'
+            }
+            sendText("哈嘿～我是動畫娘，你好\r\n請用 `/anime <關鍵字>` 的格式告訴我你要找的動畫歐", targetId, additionOptions)
+            return;
+    }
     if (message.text && message.text.match(new RegExp('^\/anime(@' + selfData.username +')?(\\s|$)', 'i'))) {
         var text = message.text.replace(new RegExp('^\/anime(@' + selfData.username +')?\\s*', 'i'), '');
+        
+        if (text.match(/^\s*$/)) {
+            var targetId = message.chat.id;
+            var additionOptions = {
+                reply_to_message_id: message.message_id
+            }
+            sendText("啊哩哩？你到底你要我查啥啊？", targetId, additionOptions)
+            return;
+        }
         
         console.log(text)
         console.log(extractFlags(text));
@@ -338,7 +357,40 @@ function sendText (text, chat_id, other_args) {
     other_args = ('object' == typeof other_args) ? JSON.parse(JSON.stringify(other_args)) : {};
     other_args.chat_id = chat_id;
     // other_args.parse_mode = 'Markdown';
+    
+    var texts = text.match(/.*(\r?\n)?/g).reduce(function (all, current) {
+        if (all[all.length - 1].length + current.length > 4094) {
+            all.push(current)
+        } else {
+            all[all.length - 1] += current
+        }
+        return all;
+    }, [''])
+    
+    var delay = 0;
+    
+    texts.forEach(function (text) {
+        setTimeout(function () {
+            other_args.text = text;
+            
+            var argTemp = JSON.parse(JSON.stringify(other_args))
+            
+            request.post(
+                {
+                    url:'https://api.telegram.org/bot' + gtoken + '/sendMessage', 
+                    formData: argTemp
+                }
+            , function (err, response, body) {
+                if (err) return console.error(err);
+                console.log(body);
+            });
+        }, delay)
+        delay += 1000;
+    })
+    /*
     other_args.text = text;
+    
+    
     request.post(
         {
             url:'https://api.telegram.org/bot' + gtoken + '/sendMessage', 
@@ -348,4 +400,5 @@ function sendText (text, chat_id, other_args) {
         if (err) return console.error(err);
         console.log(body);
     });
+    */
 }
