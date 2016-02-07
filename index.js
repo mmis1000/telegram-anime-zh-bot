@@ -312,22 +312,89 @@ api.on('message', function(message)
         var matchedItems = [];
         
         var formatedText = chineseConv.sify(text).toLowerCase();
+        var formatedTexts = formatedText.split(/\s+/g);
         
-        datas.items.forEach(function (item) {
-            var matched = false;
-            item.names.forEach(function (name) {
-                if (name.match(escapeRegExp(formatedText))) {
-                    matched = true;
+        var matchedItems = [];
+        var resultPosibilitys = [];
+        if (formatedTexts.length === 1) {
+            datas.items.forEach(function (item) {
+                var posibility = {
+                    item: item,
+                    distance: Infinity,
+                    sortOrder: null,
+                    closestName: null,
+                    // not used in this mode
+                    matchConfidence: 0
+                }
+                var matched = false;
+                item.names.forEach(function (name) {
+                    if (name.match(escapeRegExp(formatedText))) {
+                        matched = true;
+                    }
+                    var currentDistance = levenshtein.get(formatedText, name) / name.length
+                    if (currentDistance < posibility.distance) {
+                        posibility.sortOrder = currentDistance
+                        posibility.distance = currentDistance
+                        posibility.closestName = name
+                    }
+                })
+                resultPosibilitys.push(posibility)
+                if (matched) {
+                    posibility.matched = true;
+                    matchedItems.push(posibility)
                 }
             })
-            if (matched) {
-                matchedItems.push(item)
-            }
-        })
-        
+        } else {
+            console.log('params: ' + JSON.stringify(formatedTexts))
+            datas.items.forEach(function (item) {
+                var posibility = {
+                    item: item,
+                    distance: Infinity,
+                    sortOrder: 1,
+                    closestName: null,
+                    matchConfidence: 0
+                }
+                var matched = false;
+                item.names.forEach(function (name) {
+                    var confidence = 0;
+                    formatedTexts.forEach(function (formatedText) {
+                        if (name.match(escapeRegExp(formatedText))) {
+                            confidence += 1 / formatedTexts.length;
+                        }
+                    })
+                    if (confidence > posibility.matchConfidence) {
+                        posibility.matchConfidence = confidence
+                        posibility.sortOrder = 1 - confidence
+                        posibility.closestName = name
+                    }
+                    if (confidence > 0.8) {
+                        matched = true;
+                    }
+                    // if (confidence > 0) {
+                       // console.log('debug start....')
+                        //console.log(item, posibility)
+                        //console.log('debug end....')
+                    // }
+                    var currentDistance = levenshtein.get(formatedText, name) / name.length
+                    if (currentDistance < posibility.distance) {
+                        posibility.distance = currentDistance
+                    }
+                })
+                resultPosibilitys.push(posibility)
+                if (matched) {
+                    posibility.matched = true;
+                    matchedItems.push(posibility)
+                }
+            })
+            
+        }
         var shouldDetail = (maxDetailedItem > matchedItems.length || flags.d) && !flags.s
         // console.log(matchedItems)
-        var resultText = matchedItems.slice(0, maxResult).map(function (item) {
+        var resultText = matchedItems.sort(function (a, b) {
+            return a.sortOrder > b.sortOrder ? 1 : -1
+        }).map(function (i) {
+            return i.item
+        }).slice(0, maxResult).map(function (item) {
             return formatResult(item, !shouldDetail);
         }).join('\r\n===========\r\n')
         
@@ -344,7 +411,12 @@ api.on('message', function(message)
         
         if (matchedItems.length === 0) {
             resultText = "找不到呢... (｡ŏ_ŏ)";
-            var mostPotentialItem = null;
+            var mostPotentialItem = resultPosibilitys.sort(function (a, b) {
+                return a.sortOrder > b.sortOrder ? 1 : -1
+            })[0]
+            // console.log(mostPotentialItem)
+            mostPotentialItem = mostPotentialItem.closestName
+            /*
             var distance = Infinity;
             
             datas.items.forEach(function (item) {
@@ -356,7 +428,10 @@ api.on('message', function(message)
                     }
                 })
             })
-            resultText += "\r\n你是想找 \"" + mostPotentialItem + "\" 嗎？"
+            */
+            if (mostPotentialItem) {
+                resultText += "\r\n你是想找 \"" + mostPotentialItem + "\" 嗎？"
+            }
         }
         
         var targetId = message.chat.id;
