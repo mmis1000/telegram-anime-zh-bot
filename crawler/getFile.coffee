@@ -50,7 +50,7 @@ getFile = (url, cb)->
 				if res.statusCode is 304
 					meta.expire = expireTime + Date.now()
 					fs.writeFileSync metaPath, JSON.stringify meta, 0, 4
-					console.error "#{url} 404 use data from cache..."
+					console.error "#{url} 304 use data from cache..."
 					fs.readFile filePath, {encoding : 'utf8'}, cb
 				if res.statusCode is 200
 					meta.expire = expireTime + Date.now()
@@ -87,6 +87,6 @@ queryFile = (url, etag, cb)->
 			}
 		}, cb
 	else
-	request url, cb
+		request url, cb
 
 module.exports = getFile
