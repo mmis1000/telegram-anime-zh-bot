@@ -2,6 +2,16 @@ getFile = require './getFile.coffee'
 chineseConv = require 'chinese-conv'
 Link = require './link.coffee'
 
+decodeHTML = do ()->
+	map = {
+		amp: '&'
+		lt: '<'
+		gt: '>'
+	}
+	(str)->
+		str.replace /&(amp|lt|gt);/g, (all, part)-> map[part]
+	
+
 getBgmTv = (cb)->
 	result = []
 
@@ -25,8 +35,12 @@ getBgmTv = (cb)->
 		names = {}
 		
 		body.map (item)->
+			
 			item.itemTexts = item.items.map (item)->
 			
+				item.name_cn = decodeHTML item.name_cn
+				item.name = decodeHTML item.name
+				
 				if names[item.name_cn] is true
 					return
 				names[item.name_cn] = true
