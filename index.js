@@ -170,9 +170,13 @@ function formatResult (result, noDetail) {
     if (result.images.length && !noDetail) {
         var imageContainer = $('<div>').text('圖片: ')
         container.append(imageContainer);
-        result.images.forEach(function (image) {
+        result.images.forEach(function (image, index) {
+            if (index > 0) {
+                imageContainer
+                .append('<span>, ')
+            }
             imageContainer.append(
-                $('<a>').attr('href', image).text('圖 ')
+                $('<a>').attr('href', image).text('圖')
             )
         })
     }
@@ -188,9 +192,12 @@ function formatResult (result, noDetail) {
     var anotherNameContainer = $('<div>').text('所有名稱:')
     container.append(anotherNameContainer);
     
-    result.names.forEach(function (name) {
+    result.names.forEach(function (name, index) {
+        if (index > 0) {
+            anotherNameContainer
+            .append('<span>, ')
+        }
         anotherNameContainer
-        .append('<span>, ')
         .append(
             $('<code>').text(name)
         )
