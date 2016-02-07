@@ -12,7 +12,12 @@ uniqueItems = require './unique_items.coffee'
 
 
 mergeResult = (res1, res2)->
-
+	
+	res1.forEach (item)->
+		item.names = item.names.map (str)-> str.toLowerCase()
+	res2.forEach (item)->
+		item.names = item.names.map (str)-> str.toLowerCase()
+	
 	tempRes = res1.map (item1)->
 	
 		closestDist = Infinity
