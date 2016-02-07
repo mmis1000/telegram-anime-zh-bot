@@ -317,11 +317,12 @@ api.on('message', function(message)
         var matchedItems = [];
         var resultPosibilitys = [];
         if (formatedTexts.length === 1) {
+            console.log('// using single find mode');
             datas.items.forEach(function (item) {
                 var posibility = {
                     item: item,
                     distance: Infinity,
-                    sortOrder: null,
+                    sortOrder: Infinity,
                     closestName: null,
                     // not used in this mode
                     matchConfidence: 0
@@ -345,6 +346,7 @@ api.on('message', function(message)
                 }
             })
         } else {
+            console.log('// using multi find mode');
             console.log('params: ' + JSON.stringify(formatedTexts))
             datas.items.forEach(function (item) {
                 var posibility = {
@@ -416,19 +418,7 @@ api.on('message', function(message)
             })[0]
             // console.log(mostPotentialItem)
             mostPotentialItem = mostPotentialItem.closestName
-            /*
-            var distance = Infinity;
             
-            datas.items.forEach(function (item) {
-                item.names.forEach(function (name) {
-                    var newDistance = levenshtein.get(formatedText, name) / formatedText.length;
-                    if (newDistance < distance) {
-                        distance = newDistance
-                        mostPotentialItem = name
-                    }
-                })
-            })
-            */
             if (mostPotentialItem) {
                 resultText += "\r\n你是想找 \"" + mostPotentialItem + "\" 嗎？"
             }
