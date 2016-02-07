@@ -5,9 +5,11 @@ var levenshtein = require('fast-levenshtein')
 var chineseConv = require('chinese-conv')
 var fs = require('fs');
 var child_process = require("child_process")
-
+var cheerio = require("cheerio");
 
 var datas = null;
+var maxDetailedItem = 5;
+var maxResult = 15;
 
 try {
     datas = JSON.parse(fs.readFileSync('./data.json'));
@@ -38,7 +40,7 @@ function updateList() {
         errRes += data;
     })
     child.on('close', function () {
-        console.log('process finished');
+        console.log('process finished, ' + new Date());
         console.log('update finished: total time ' + (Date.now() - start) + ' ms')
         try {
             datas = JSON.parse(res)
@@ -87,6 +89,43 @@ api.getMe(function(err, data)
     api.startPolling(40);
 });
 
+
+
+function escapeHtml(unsafe) {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;");
+ }
+
+function encodeText(str) {
+    return (new Buffer(str).toString('base64')).replace(/[^0-9a-z]/ig, function (c) {
+        var pad = "0000"
+        var str = c.charCodeAt(0).toString(16);
+        switch (c) {
+            case "_":
+                return "__"
+            default:
+                return "_" + pad.substring(0, pad.length - str.length) + str;
+        }
+    })
+}
+
+function decodeText(str) {
+    str = str.replace(/_(_|[0-9a-f]{4,4})/g, function (str, frag) {
+        switch (frag) {
+            case '_':
+                return '_';
+            default:
+                return String.fromCharCode(parseInt(frag, 16));
+        }
+    })
+    // console.log(str)
+    str = (new Buffer(str , 'base64')).toString('utf8')
+    // console.log(str)
+    return str;
+}
+
 function toUnsignedInt(input) {
     if ('number' == typeof input) {
         input = Math.floor(input);
@@ -105,41 +144,67 @@ function toUnsignedInt(input) {
     return input;
 }
 
-function formatResult (result) {
+function formatResult (result, noDetail) {
     console.log(result);
-    var links = result.links.map(function (link) {
-        return '* ' + link.name + ' ' + link.url
-    }).join('\r\n');
-    var names = result.names.map(function (name) {
-        return '* ' + name
-    }).join('\r\n');
-    var image = "";
-    if (result.images.length) {
-        image = ("圖片: " + result.images.join(" ") + "\r\n") || "";
+    var $ = cheerio.load('<div>')
+    var container = $('<div>');
+    container.append(
+        $('<div>').text('資源名稱:')
+    ).append(
+        $('<div>').text('* ' + result.id)
+    )
+    
+    if (result.links.length) {
+        container.append(
+            $('<div>').text('連結: ')
+        )
+        result.links.forEach(function (link) {
+            container.append(
+                $('<div>').append(
+                    $('<a>').attr('href', link.url).text(link.name)
+                )
+            )
+        })
     }
     
-    
-    var maxText = 100;
-    var description;
-    
-    if (result.descriptions.length) {
-        description = "敘述:\r\n" + result.descriptions[0] + "\r\n"
-        if (result.descriptions[0].length > maxText) {
-            description = description.slice(0, maxText) + '...\r\n'
-        }
-    } else {
-        description = "";
+    if (result.images.length && !noDetail) {
+        var imageContainer = $('<div>').text('圖片: ')
+        container.append(imageContainer);
+        result.images.forEach(function (image) {
+            imageContainer.append(
+                $('<a>').attr('href', image).text('圖 ')
+            )
+        })
     }
+    if (result.descriptions.length && !noDetail) {
+        container.append(
+            $('<div>').text('敘述:')
+        ).append(
+            $('<div>').append(
+                $('<pre>').text(result.descriptions[0].replace(/[\r\n\s]+/g, ' '))
+            )
+        )
+    }
+    var anotherNameContainer = $('<div>').text('所有名稱:')
+    container.append(anotherNameContainer);
     
-    // console.log(links, names);
-    return "資源名稱:\r\n" + 
-        '* ' + result.id + '\r\n' +
-        image +
-        "連結:\r\n" +
-        links + '\r\n' +
-        description +
-        "其他名稱:\r\n" +
-        names + '\r\n';
+    result.names.forEach(function (name) {
+        anotherNameContainer
+        .append('<span>, ')
+        .append(
+            $('<code>').text(name)
+        )
+    })
+    
+    return container.html().replace(/&#[xX]([0-9a-fA-F]{4,4});/g, function (item, text) {
+        return String.fromCharCode(parseInt(text, 16))
+    })
+    .replace(/<div>/g, '')
+    .replace(/<\/div>/g ,'\r\n')
+    .replace(/<\/?span>/g, '')
+    .replace(/<\/pre>[\s\r\n]+/ig, '</pre>') // ignore space after pre block
+    .replace(/^\s+|\s+$/g, '') // ignore space at last and front
+    ;
 }
 
 function escapeRegExp(str) {
@@ -208,14 +273,23 @@ api.on('message', function(message)
     
     
     if (message.text && message.text.match(/\/start([^a-z]|$)/i)) {
-            var targetId = message.chat.id;
-            var additionOptions = {
-                reply_to_message_id: message.message_id,
-                parse_mode: 'Markdown'
-            }
-            sendText("哈嘿～我是動畫娘，你好\r\n請用 `/anime <關鍵字>` 的格式告訴我你要找的動畫歐", targetId, additionOptions)
-            return;
+        var targetId = message.chat.id;
+        var additionOptions = {
+            reply_to_message_id: message.message_id,
+            parse_mode: 'Markdown'
+        }
+        sendText("哈嘿～我是動畫娘，你好\r\n請用 `/anime <關鍵字>` 的格式告訴我你要找的動畫歐", targetId, additionOptions)
+        return;
     }
+    
+    
+    if (message.text.match(/^\/exec_(_(_|[0-9a-f]{4,4})|[0-9a-z])+$/i)) {
+        console.log('detect commamd link')
+        var decodedText = decodeText(message.text.replace(/^\/exec_/, ''));
+        console.log('decoded text: ' + decodedText);
+        message.text = decodedText
+    }
+    
     if (message.text && message.text.match(new RegExp('^\/anime(@' + selfData.username +')?(\\s|$)', 'i'))) {
         var text = message.text.replace(new RegExp('^\/anime(@' + selfData.username +')?\\s*', 'i'), '');
         
@@ -237,7 +311,7 @@ api.on('message', function(message)
     
         var matchedItems = [];
         
-        var formatedText = chineseConv.sify(text)
+        var formatedText = chineseConv.sify(text).toLowerCase();
         
         datas.items.forEach(function (item) {
             var matched = false;
@@ -251,12 +325,21 @@ api.on('message', function(message)
             }
         })
         
+        var shouldDetail = (maxDetailedItem > matchedItems.length || flags.d) && !flags.s
         // console.log(matchedItems)
-        var maxResult = 15;
-        var resultText = matchedItems.slice(0, maxResult).map(formatResult).join('\r\n===========\r\n')
+        var resultText = matchedItems.slice(0, maxResult).map(function (item) {
+            return formatResult(item, !shouldDetail);
+        }).join('\r\n===========\r\n')
         
+        
+        if (!shouldDetail || matchedItems.length > maxResult) {
+            resultText = "===========\r\n\r\n" + resultText
+        }
+        if (!shouldDetail) { 
+            resultText = "啊，東西太多了，我幫你把一些東西隱藏起來了，點 /exec_" + encodeText(escapeHtml("/anime -d "+ text)) + " 可以查看詳細結果歐\r\n" + resultText;
+        }
         if (matchedItems.length > maxResult) {
-            resultText = "阿...太多結果了，有 " + (matchedItems.length - maxResult) + " 個結果被隱藏起來了呢 (|||ﾟдﾟ)\r\n\r\n" + resultText;
+            resultText = "歐歐...太多結果了，有 <code>" + (matchedItems.length - maxResult) + "</code> 個結果被隱藏起來了呢 (|||ﾟдﾟ)\r\n" + resultText;
         }
         
         if (matchedItems.length === 0) {
@@ -276,15 +359,22 @@ api.on('message', function(message)
             resultText += "\r\n你是想找 \"" + mostPotentialItem + "\" 嗎？"
         }
         
-        var targetId =message.chat.id;
+        var targetId = message.chat.id;
         var additionOptions = {
-            reply_to_message_id: message.message_id
+            reply_to_message_id: message.message_id,
+            parse_mode: 'HTML'
+        }
+        if (matchedItems.length > 1) {
+            additionOptions.disable_web_page_preview = 'true';
         }
         
         if (flags.o) {
             targetId = parseInt(flags.o);
             additionOptions= {};
         }
+        
+        console.log(resultText);
+        
         sendText(resultText, targetId, additionOptions)
         
     }
@@ -368,7 +458,7 @@ function sendText (text, chat_id, other_args) {
     }, [''])
     
     var delay = 0;
-    
+    console.log(texts)
     texts.forEach(function (text) {
         setTimeout(function () {
             other_args.text = text;
