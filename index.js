@@ -399,11 +399,17 @@ api.on('message', function(message)
         }
         var shouldDetail = (maxDetailedItem > matchedItems.length || flags.d) && !flags.s
         // console.log(matchedItems)
+        
+        var page = flags.p || '0'
+        page = parseInt(page, 10);
+        page = (isNaN(page) || page < 0) ? 0 : page;
+        var offset = page * maxResult;
+        
         var resultText = matchedItems.sort(function (a, b) {
             return a.sortOrder > b.sortOrder ? 1 : -1
         }).map(function (i) {
             return i.item
-        }).slice(0, maxResult).map(function (item) {
+        }).slice(offset, maxResult + offset).map(function (item) {
             return formatResult(item, !shouldDetail);
         }).join('\r\n===========\r\n')
         
@@ -411,11 +417,20 @@ api.on('message', function(message)
         if (!shouldDetail || matchedItems.length > maxResult) {
             resultText = "===========\r\n\r\n" + resultText
         }
-        if (!shouldDetail) { 
-            resultText = "啊，東西太多了，我幫你把一些東西隱藏起來了，點 /exec_" + encodeText(escapeHtml("/anime -d "+ text)) + " 可以查看詳細結果歐\r\n" + resultText;
+        if (!shouldDetail) {
+            if (page === 0) {
+                resultText = "啊，東西太多了，我幫你把一些東西隱藏起來了，點 /exec_" + encodeText(escapeHtml("/anime -d " + text)) + " 可以查看詳細結果歐\r\n" + resultText;
+            } else {
+                resultText = "啊，東西太多了，我幫你把一些東西隱藏起來了，點 /exec_" + encodeText(escapeHtml("/anime -d -p=" + page + " " + text)) + " 可以查看詳細結果歐\r\n" + resultText;
+            }
         }
         if (matchedItems.length > maxResult) {
             resultText = "歐歐...太多結果了，有 <code>" + (matchedItems.length - maxResult) + "</code> 個結果被隱藏起來了呢 (|||ﾟдﾟ)\r\n" + resultText;
+            if (page + 1 < matchedItems.length / maxResult) {
+                resultText = resultText + '\r\n\r\npage ' + (page + 1) + ' 按 /exec_' + encodeText(escapeHtml("/anime -p=" + (page + 1) + " " + text)) + ' 以顯示下頁'
+            } else {
+                resultText = resultText + '\r\n\r\npage ' + (page + 1)
+            }
         }
         
         if (matchedItems.length === 0) {
