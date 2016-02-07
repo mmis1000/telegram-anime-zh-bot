@@ -46,7 +46,7 @@ getFile = (url, cb)->
 		else
 			queryFile url, etag, (err, res, body)->
 				if err
-					cb err, null
+					return cb err, null
 				if res.statusCode is 304
 					meta.expire = expireTime + Date.now()
 					fs.writeFileSync metaPath, JSON.stringify meta, 0, 4
