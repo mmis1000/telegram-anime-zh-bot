@@ -145,7 +145,7 @@ function toUnsignedInt(input) {
 }
 
 function formatResult (result, noDetail) {
-    console.log(result);
+    // console.log(result);
     var $ = cheerio.load('<div>')
     var container = $('<div>');
     container.append(
@@ -283,9 +283,9 @@ api.on('message', function(message)
     }
     
     
-    if (message.text.match(/^\/exec_(_(_|[0-9a-f]{4,4})|[0-9a-z])+$/i)) {
+    if (message.text && message.text.match(/^\/exec_(_(_|[0-9a-f]{4,4})|[0-9a-z])+($|@)/i)) {
         console.log('detect commamd link')
-        var decodedText = decodeText(message.text.replace(/^\/exec_/, ''));
+        var decodedText = decodeText(message.text.replace(/^\/exec_|@.*$/g, ''));
         console.log('decoded text: ' + decodedText);
         message.text = decodedText
     }
@@ -302,8 +302,8 @@ api.on('message', function(message)
             return;
         }
         
-        console.log(text)
-        console.log(extractFlags(text));
+        // console.log(text)
+        // console.log(extractFlags(text));
         
         var temp = extractFlags(text)
         var flags = temp.flags
@@ -373,7 +373,7 @@ api.on('message', function(message)
             additionOptions= {};
         }
         
-        console.log(resultText);
+        // console.log(resultText);
         
         sendText(resultText, targetId, additionOptions)
         
@@ -458,7 +458,7 @@ function sendText (text, chat_id, other_args) {
     }, [''])
     
     var delay = 0;
-    console.log(texts)
+    // console.log(texts)
     texts.forEach(function (text) {
         setTimeout(function () {
             other_args.text = text;
