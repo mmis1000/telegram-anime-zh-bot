@@ -70,7 +70,12 @@ getBaha = (cb)->
 	findWork = (link, item, imageLink)->
 		todo++
 		getFile link, (err, body)->
-			$ = cheerio.load body
+			try
+				$ = cheerio.load body
+			catch err
+				console.error "error during parse #{link} ignoring..."
+				todo--
+				return
 			# console.log body
 			# console.log body
 			
