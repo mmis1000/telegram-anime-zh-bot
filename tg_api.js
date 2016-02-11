@@ -36,6 +36,10 @@ TelegramAPI.prototype.startPolling = function (timeout) {
             } catch (err) {
                 console.error(err)
             }
+            
+            self.pollingEnabled = false;
+            // reset status
+            
             self.startPolling(timeout)
         }
     }
@@ -43,6 +47,7 @@ TelegramAPI.prototype.startPolling = function (timeout) {
     clearTimeout(this.pollingTimeoutId);
     this.pollingTimeoutId = setTimeout(checkTimeout, this.pollingTimeout);
     this.currentPollRequest = this._poll(timeout, null, function handle(err, response, body) {
+        console.log('polling finished');
         var i;
         if (err || response.statusCode !== 200) {
             self.emit('error', err || new Error('unexpect response code: ' + response.statusCode));
@@ -86,6 +91,7 @@ TelegramAPI.prototype._poll = function _poll (timeout, offset, cb) {
     if (offset != null) {
         param.offset = offset
     }
+    console.log('polling with offset: ' + offset + ' at ' + new Date);
     return request.get({url:'https://api.telegram.org/bot' + this.token + '/getUpdates', qs:param}, cb)
 }
 
