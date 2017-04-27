@@ -44,16 +44,22 @@ getBgmTv = (cb)->
 				if names[item.name_cn] is true
 					return
 				names[item.name_cn] = true
-				
-				result.push {
-					id: item.name_cn,
-					items: [item],
-					names: [(chineseConv.sify item.name_cn), (chineseConv.sify item.name)],
-					links: [new Link item.url, item.name_cn],
-					images: [item.images.large],
-					descriptions: [],
-					airDate: new Date item.air_date
-				}
+				try
+					temp = {
+						id: item.name_cn,
+						items: [item],
+						names: [(chineseConv.sify item.name_cn), (chineseConv.sify item.name)],
+						links: [new Link item.url, item.name_cn],
+						images: [],
+						descriptions: [],
+						airDate: new Date item.air_date
+					}
+					if item.images
+						temp.images = [item.images.large]
+					result.push temp
+				catch err
+					console.error err
+					console.error item
 				
 	cb null, result
 

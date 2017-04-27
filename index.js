@@ -6,24 +6,26 @@ var chineseConv = require('chinese-conv')
 var fs = require('fs');
 var child_process = require("child_process")
 var cheerio = require("cheerio");
+var path = require("path");
 
 var datas = null;
 var maxDetailedItem = 5;
 var maxResult = 15;
 
+var maxRetry = 3;
 try {
-    datas = JSON.parse(fs.readFileSync('./data.json'));
+    datas = JSON.parse(fs.readFileSync(path.resolve(__dirname, './data.json')));
 } catch (err) {
     console.log('data not found, recreating now...');
     updateList();
 }
 
-setInterval(updateList, 60 * 60 * 1000);
+setTimeout(updateList.bind(null, 3), 60 * 60 * 1000);
 
-function updateList() {
+function updateList(retry) {
     var start = Date.now()
     console.log('updating list...')
-    var child = child_process.fork('./crawler/index.js', [], {silent: true});
+    var child = child_process.fork(path.resolve(__dirname, './crawler/index.js'), [], {silent: true});
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
     
@@ -44,23 +46,31 @@ function updateList() {
         console.log('update finished: total time ' + (Date.now() - start) + ' ms')
         try {
             datas = JSON.parse(res)
+            retry = maxRetry;
         } catch (e) {
-            console.log("error during parse response, retry after 1 minute, error output: " + errRes)
-            
-            setTimeout(updateList, 60 * 1000)
-            
+            console.log("error during parse response, retry after 1 minute, error output: ", errRes)
+            retry--;
             return
         }
-        fs.writeFile('./crawler.log', errRes, function (err) {
+        fs.writeFile(path.resolve(__dirname, './crawler.log'), errRes, function (err) {
             if (err) {
                 console.log(err)
             }
         })
-        fs.writeFile('./data.json', res, function (err) {
+        fs.writeFile(path.resolve(__dirname, './data.json'), res, function (err) {
             if (err) {
                 console.log(err)
             }
         })
+        try {
+            child.kill('SIGKILL')
+        } catch (e) {
+            console.error('fail to kill')
+            console.error(e)
+        }
+        if (retry > 0) {
+            setTimeout(updateList.bind(null, retry), 60 * 60 * 1000);
+        }
     })
 }
 
@@ -267,18 +277,6 @@ api.on('message', function(message)
 {
     console.log(message);
     
-    if (!datas) {
-        
-        var targetId = message.chat.id;
-        var additionOptions = {
-            reply_to_message_id: message.message_id
-        }
-        sendText("啊...動畫娘正在忙著整理動畫呢，可以等一下再來嗎？", targetId, additionOptions)
-        
-        return;
-    }
-    
-    
     if (message.text && message.text.match(/\/start([^a-z]|$)/i)) {
         var targetId = message.chat.id;
         var additionOptions = {
@@ -298,6 +296,17 @@ api.on('message', function(message)
     }
     
     if (message.text && message.text.match(new RegExp('^\/anime(@' + selfData.username +')?(\\s|$)', 'i'))) {
+        if (!datas) {
+            
+            var targetId = message.chat.id;
+            var additionOptions = {
+                reply_to_message_id: message.message_id
+            }
+            sendText("啊...動畫娘正在忙著整理動畫呢，可以等一下再來嗎？", targetId, additionOptions)
+            
+            return;
+        }
+        
         var text = message.text.replace(new RegExp('^\/anime(@' + selfData.username +')?\\s*', 'i'), '');
         
         if (text.match(/^\s*$/)) {

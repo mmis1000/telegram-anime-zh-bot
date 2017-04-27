@@ -59,8 +59,7 @@ getBaha = (cb)->
 				link = url.resolve link, _.attr 'href'
 				console.error link
 				imageLink = _.find 'div'
-				.attr 'style'
-				.replace /^.*\(|\).*$/g, ''
+				.attr 'data-bg'
 				
 				findWork link, item, imageLink
 			todo--

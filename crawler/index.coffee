@@ -67,7 +67,7 @@ start = Date.now()
 
 getBaha = require './get_baha.coffee'
 getBgmTv = require './get_bgm_tv.coffee'
-get2dGate = require './get_2d_gate.coffee'
+# get2dGate = require './get_2d_gate.coffee'
 
 result = null
 
@@ -77,18 +77,20 @@ getBgmTv (err, res)->
 	result = res
 	console.error Date.now() - start
 	
+	###
 	get2dGate (err, res)->
 		result = mergeResult result, res
 		console.error Date.now() - start
+	###
+	
+	getBaha (err, res)->
+		result = mergeResult result, res
+		result = {
+			counts: result.length,
+			lastUpdate: Date.now(),
+			items: result
+		}
 		
-		getBaha (err, res)->
-			result = mergeResult result, res
-			result = {
-				counts: result.length,
-				lastUpdate: Date.now(),
-				items: result
-			}
+		console.log JSON.stringify result, 0, 4
 			
-			console.log JSON.stringify result, 0, 4
-				
-			console.error Date.now() - start
+		console.error Date.now() - start
