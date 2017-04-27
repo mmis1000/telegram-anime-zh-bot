@@ -17,9 +17,9 @@ try {
     datas = JSON.parse(fs.readFileSync(path.resolve(__dirname, './data.json')));
 } catch (err) {
     console.log('data not found, recreating now...');
-    updateList();
 }
 
+updateList(3);
 setTimeout(updateList.bind(null, 3), 60 * 60 * 1000);
 
 function updateList(retry) {
@@ -70,6 +70,8 @@ function updateList(retry) {
         }
         if (retry > 0) {
             setTimeout(updateList.bind(null, retry), 60 * 60 * 1000);
+        } else {
+            process.exit(1);
         }
     })
 }
